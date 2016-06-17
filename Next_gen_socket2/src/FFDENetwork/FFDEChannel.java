@@ -1,8 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.ThreadSafe;
-
 import java.io.*;
 import java.util.*;
 import java.net.*;
@@ -13,13 +10,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * This object represents a communication channel being a wrapper for a network socket (from java.net package)
  * This allows to perform simplified interaction with the socket without much coding in other modules of FFDE package.
  */
-@ThreadSafe
 public class FFDEChannel implements FFDEObserver {
 
-    @GuardedBy("rxLock")
     private Scanner rx;                         //< receiver
     private final Object rxLock = new Object(); //< receiver synchronization lock
-    @GuardedBy("txLock")
+
     private BufferedWriter tx;                  //< transmitter
     private final Object txLock = new Object(); //< transmitter synchronization lock
 
@@ -184,6 +179,14 @@ public class FFDEChannel implements FFDEObserver {
                 e.printStackTrace();
             }
         }
+    }
+
+    /**
+     * Changes identifier got by generated rx events. DANGEROUS METHOD!
+     * @param aNewID    new id
+     */
+    public void setRxIdentifier(String aNewID) {
+        rxEventID = aNewID;
     }
 
     /**

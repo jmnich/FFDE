@@ -1,9 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.ThreadSafe;
-
-import java.io.IOException;
 import java.util.*;
 import java.net.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,10 +10,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * of data. (ex. filtering module would probably want to subscribe IMU readings)
  * Every update is automatically transmitted to all subscribers in a separate thread.
  */
-@ThreadSafe
 public class FFDEPublisher implements Runnable {
 
-    @GuardedBy("channelsLock")
     private List<FFDEChannel> channels = new CopyOnWriteArrayList<>();    //< list of channels in subscription
 
     private int port;                                           //< port of the publisher

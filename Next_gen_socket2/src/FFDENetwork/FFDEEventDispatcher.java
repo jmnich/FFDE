@@ -1,9 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.NotThreadSafe;
-import net.jcip.annotations.ThreadSafe;
-
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -201,7 +197,6 @@ public class FFDEEventDispatcher implements Runnable, FFDEObservable {
      * This object notifies an observer with a specified FFDENetwork.FFDEEvent object in separate Thread. This ensures that one
      * observer performing time-consuming tasks can't delay notification of other observers.
      */
-    @NotThreadSafe
     private class EventHandler implements Runnable {
         private FFDEEvent event;
         private FFDEObserver observer;

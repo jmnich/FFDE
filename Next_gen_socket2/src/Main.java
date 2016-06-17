@@ -46,17 +46,34 @@ public class Main {
 
         // III. TEST OF TIMING
 
+//        FFDEKernel kernel = new FFDEKernel(666);
+//
+//        TimingMasterNode masterNode = new TimingMasterNode();
+//        TimingSlaveNode slaveNode = new TimingSlaveNode();
+//
+//        while(true) {
+//            try {
+//                Thread.sleep(500);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+
+        // IV. TEST OF PIPELINES
+
         FFDEKernel kernel = new FFDEKernel(666);
 
-        TimingMasterNode masterNode = new TimingMasterNode();
-        TimingSlaveNode slaveNode = new TimingSlaveNode();
+        PipelineRx rxNode = new PipelineRx();
+        PipelineTx txNode = new PipelineTx();
 
         while(true) {
             try {
                 Thread.sleep(500);
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            System.out.println(kernel.getCurrentState());
         }
     }
 }

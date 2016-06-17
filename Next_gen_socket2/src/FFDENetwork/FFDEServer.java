@@ -1,7 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -19,11 +17,11 @@ public class FFDEServer implements FFDEObserver{
     private Map<String, FFDEPublisher> subscriptionOutputs = new ConcurrentHashMap<>();   //< map of published channels
     private Map<String, FFDEChannel> slavesChannels = new ConcurrentHashMap<>();  //< channels to slave servers
     private List<FFDEChannel> subscriptionInputs = new CopyOnWriteArrayList<>();  //< data from subscribed channels in
+    private Map<String, FFDEChannel> pipelineChannels = new ConcurrentHashMap<>();        //< stores pipelines
 
     private volatile FFDEChannel commandChannel;                //< channel to the commander of the server
     private volatile FFDEChannel kernelChannel;                 //< channel to the kernel server on 666 port
 
-    @GuardedBy("serverStateLock")
     private String serverState = "registration";                            //< state of the FFDE network
     private final Object serverStateLock = new Object();                    //< synchronization lock
 
@@ -128,6 +126,17 @@ public class FFDEServer implements FFDEObserver{
     }
 
     /**
+     * Opens pipeline connected to a specified node registered in the same FFDE Network.
+     * @param aName     name of the pipeline recipient
+     */
+    public void openPipeline(String aName) {
+        // create a request in form of an ktx event and enqueue it until a proper net state is reached
+        List<String> request = Arrays.asList("request", "open_pipeline", "1", aName, nodeName);
+        FFDEEvent ktxEvent = new FFDEEvent("ktx", request);
+        kernelRequestsQueue.addRequest(ktxEvent, "declaration");
+    }
+
+    /**
      * Sends data to the specified slave.
      * @param aSlave        name of the slave
      * @param aData         data in form of a list of Strings
@@ -138,6 +147,20 @@ public class FFDEServer implements FFDEObserver{
         }
         else {
             // TODO if required slave does not exist do something
+        }
+    }
+
+    /**
+     * Sends data to the specified pipeline.
+     * @param aRecipient    name of the recipient
+     * @param aData         data in form of a list of Strings
+     */
+    public void sendThroughPipeline(String aRecipient, List<String> aData) {
+        if(pipelineChannels.containsKey(aRecipient)) {
+            pipelineChannels.get(aRecipient).transmitMessage(aData);
+        }
+        else {
+            // TODO if required pipeline does not exist do something
         }
     }
 
@@ -178,6 +201,14 @@ public class FFDEServer implements FFDEObserver{
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Gets all active pipelines.
+     * @return      set of names of connected nodes
+     */
+    public Set<String> getActivePipelines() {
+        return pipelineChannels.keySet();
     }
 
     //                                      END OF SERVICES                                     +
@@ -250,8 +281,66 @@ public class FFDEServer implements FFDEObserver{
                 handle_set_state(aEvent.getMessage());
                 break;
 
+            case "open_pipeline":
+                handle_open_pipeline(aEvent.getMessage());
+                break;
+
             default:
                 // TODO unknown command type handler
+                break;
+        }
+    }
+
+    /**
+     * Handles command "open_pipeline" from the kernel.
+     * @param aMessage  message from an rx_event with the command
+     */
+    private void handle_open_pipeline(List<String> aMessage) {
+        // note that this command needs to be handled in two different contexts on server's side
+
+        String context = aMessage.get(2);   //< extract command context
+
+        switch (context) {
+            case "2":   // the server is a recipient
+                // prepare a socket to accept initiator connection
+                new Thread(() -> {
+                    try {
+                        ServerSocket serverSocket = new ServerSocket(Integer.parseInt(aMessage.get(5)));
+                        Socket socket = serverSocket.accept();
+
+                        pipelineChannels.put(aMessage.get(4), new FFDEChannel(aMessage.get(4), socket,
+                                externalEventDispatcher, timer, "pipe_" + aMessage.get(4)));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
+                // send response to the kernel
+                List<String> response = Arrays.asList("response", "open_pipeline", "3", aMessage.get(3),
+                        aMessage.get(4), aMessage.get(5));
+                kernelChannel.transmitMessage(response);      //< transmit message
+
+                externalEventDispatcher.observeFFDE(node, "pipe_" + aMessage.get(4));//< node: start observing rx event
+                break;
+
+            case "4":   // the server is an initiator
+                try {
+                    Socket socket = new Socket("localhost", Integer.parseInt(aMessage.get(5)));
+                    String identifier = "pipe_" + aMessage.get(3);
+                    FFDEChannel channel = new FFDEChannel(aMessage.get(3), socket, externalEventDispatcher, timer,
+                            identifier);
+
+                    // add the new channel to the map of slaves indexed by its name
+                    pipelineChannels.put(aMessage.get(3), channel);
+
+                    externalEventDispatcher.observeFFDE(node, "pipe_" + aMessage.get(3)); //< observe rx event
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+
+            default:
+                // TODO context error
                 break;
         }
     }

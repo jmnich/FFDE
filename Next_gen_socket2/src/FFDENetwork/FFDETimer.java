@@ -1,10 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-import net.jcip.annotations.NotThreadSafe;
-import net.jcip.annotations.ThreadSafe;
-
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -18,7 +13,6 @@ import java.util.concurrent.*;
  *                  is recommended to increase the number of worker threads as it would speed up the update process.</I>
  * </H1>
  */
-@ThreadSafe
 public class FFDETimer implements Runnable, FFDEObservable {
     private int tickInterval = 1;                                   //< tick interval [ms]
     private ExecutorService executorAssignService = Executors.newSingleThreadExecutor();    //< assign executor
@@ -26,7 +20,6 @@ public class FFDETimer implements Runnable, FFDEObservable {
 
     private List<FFDEObserver> observers = new CopyOnWriteArrayList<>();    //< list of observers of the 'tick' event
 
-    @GuardedBy("onFlagLock")
     private boolean onFlag = true;                                  //< when this flag is set the timer generates ticks
     private final Object onFlagLock = new Object();                 //< synchronization lock
 

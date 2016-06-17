@@ -1,7 +1,5 @@
 package FFDENetwork;
 
-import net.jcip.annotations.GuardedBy;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -30,15 +28,12 @@ public class FFDEKernel implements FFDEObserver{
     private Map<String, FFDEChannel> registeredServers = new ConcurrentHashMap<>(); //< registered servers by name
     private List<FFDEChannel> temporaryServersList = new CopyOnWriteArrayList<>();    //< stores servers prior to naming
 
-    @GuardedBy("stateLock")
     private String state = "registration";                              //< state of the FFDE network
     private final Object stateLock = new Object();                      //< synchronization lock
 
-    @GuardedBy("timeLock")
     private int time = 0;                                               //< counts time [ms]
     private final Object timeLock = new Object();                       //< synchronization lock
 
-    @GuardedBy("lastUnusedPort")
     private int lastUnusedPort = firstPortNumber;                       //< holds last port that is still unassigned
     private final Object lastUnusedPortLock = new Object();             //< synchronization lock
 
@@ -174,6 +169,29 @@ public class FFDEKernel implements FFDEObserver{
 
                     sendToServer(masterName, Arrays.asList("command", "take_control", "4", slaveName,
                             masterName, assignedPort));
+                }
+                else {
+                    // TODO context error
+                }
+
+                break;
+
+            case "open_pipeline":
+                if(aMessage.get(2).equals("1")) {
+                    String recipientName = aMessage.get(3);
+                    String initiatorName = aMessage.get(4);
+                    int assignedPort = getNextFreePort();
+
+                    sendToServer(recipientName, Arrays.asList("command", "open_pipeline", "2", recipientName,
+                            initiatorName, Integer.toString(assignedPort)));
+                }
+                else if(aMessage.get(2).equals("3")) {
+                    String recipientName = aMessage.get(3);
+                    String initiatorName = aMessage.get(4);
+                    String assignedPort = aMessage.get(5);
+
+                    sendToServer(initiatorName, Arrays.asList("command", "open_pipeline", "4", recipientName,
+                            initiatorName, assignedPort));
                 }
                 else {
                     // TODO context error
